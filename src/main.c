@@ -2,103 +2,114 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <readline/readline.h>
-#include <readline/history.h>
-#include <signal.h>
 #include <time.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include "shell.h"
 #include "parser.h"
 #include "executor.h"
+#include "theme.h"
+#include "config.h"
 
-#define RED   "\033[31m"
-#define GREEN "\033[32m"
-#define RESET "\033[0m"
-
-char histfile[1024];
-int  last_status = 0;
+int last_status = 0;
+char histfile[1024] = "";
 char elapsed_str[32] = "";
+OJCConfig shell_config;
 
-void handle_sigint(int sig) {
-    (void)sig;
-    last_status = 130;
-    write(STDOUT_FILENO, "\n", 1);
-    rl_on_new_line();
-    rl_replace_line("", 0);
-    rl_redisplay();
+static void save_history(void) {
+    if (histfile[0]) (void)write_history(histfile);
 }
 
-void save_history(void) { write_history(histfile); }
+static void setup_history_path(void) {
+    const char *state = getenv("XDG_STATE_HOME");
+    const char *home = getenv("HOME");
+    char dir[1024], parent[1024];
+
+    if (state && *state) {
+        if (snprintf(dir,sizeof(dir),"%s/ojc",state) >= (int)sizeof(dir)) return;
+        if (mkdir(state,0700) && access(state,F_OK)) return;
+    } else if (home && *home) {
+        if (snprintf(parent,sizeof(parent),"%s/.local",home) >= (int)sizeof(parent)) return;
+        (void)mkdir(parent,0700);
+        if (snprintf(parent,sizeof(parent),"%s/.local/state",home) >= (int)sizeof(parent)) return;
+        (void)mkdir(parent,0700);
+        if (snprintf(dir,sizeof(dir),"%s/ojc",parent) >= (int)sizeof(dir)) return;
+    } else return;
+
+    if (mkdir(dir,0700) && access(dir,F_OK)) return;
+    (void)snprintf(histfile,sizeof(histfile),"%s/history",dir);
+}
 
 int main(void) {
-    struct sigaction sa;
-    sa.sa_handler = handle_sigint;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGINT, &sa, NULL);
-
-    snprintf(histfile, sizeof(histfile), "%s/.ojchis", getenv("HOME"));
-    read_history(histfile);
-    atexit(save_history);
-
     char *input;
 
-    while (1) {
-        char cwd[1024];
-        getcwd(cwd, sizeof(cwd));
-        char *home = getenv("HOME");
-        char display[1024];
+    (void)config_load(&shell_config);
+    setup_history_path();
+    if (histfile[0]) (void)read_history(histfile);
+    atexit(save_history);
+    rl_catch_signals = 1;
+    rl_readline_name = "ojc";
 
-        if (strncmp(cwd, home, strlen(home)) == 0)
-            snprintf(display, sizeof(display), "$H%s", cwd + strlen(home));
-        else
-            snprintf(display, sizeof(display), "%s", cwd);
+    for (;;) {
+        char cwd[1024], display[1024], prompt[256], timestr[64] = "";
+        struct winsize ws = {0};
+        struct tm *tm_info;
+        time_t now;
+        int cols = 80, used, spaces;
+        const char *home = getenv("HOME");
 
-        time_t now = time(NULL);
-        char timestr[64];
-        struct tm *tm_info = localtime(&now);
-        strftime(timestr, sizeof(timestr), "%a %b %d %H:%M:%S", tm_info);
+        if (!getcwd(cwd,sizeof(cwd))) snprintf(cwd,sizeof(cwd),"?");
+        if (home && *home && !strncmp(cwd,home,strlen(home)) &&
+            (cwd[strlen(home)] == '/' || cwd[strlen(home)] == '\0'))
+            snprintf(display,sizeof(display),"~%s",cwd+strlen(home));
+        else snprintf(display,sizeof(display),"%s",cwd);
 
-        struct winsize w;
-        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-        int cols = w.ws_col;
+        now = time(NULL);
+        tm_info = localtime(&now);
+        if (tm_info) (void)strftime(timestr,sizeof(timestr),"%a %b %d %H:%M:%S",tm_info);
+        if (ioctl(STDOUT_FILENO,TIOCGWINSZ,&ws) == 0 && ws.ws_col > 0) cols = ws.ws_col;
 
-        int spaces1 = (cols - strlen(display) - strlen(elapsed_str) - strlen(timestr)) / 2;
-        if (spaces1 < 1) spaces1 = 1;
-        int spaces2 = cols - strlen(display) - spaces1 - strlen(elapsed_str) - strlen(timestr);
-        if (spaces2 < 1) spaces2 = 1;
+        printf("%s%s\033[0m",theme_color(&shell_config,"info"),display);
+        used = (int)strlen(display) + (int)strlen(elapsed_str) + (int)strlen(timestr);
+        spaces = (cols-used)/2;
+        if (spaces < 1) spaces = 1;
+        while (spaces--) putchar(' ');
+        printf("%s%s\033[0m",theme_color(&shell_config,"success"),elapsed_str);
+        used = (int)strlen(display)+(int)strlen(elapsed_str);
+        spaces = cols-used-(int)strlen(timestr);
+        if (spaces < 1) spaces = 1;
+        while (spaces--) putchar(' ');
+        printf("%s\n",timestr);
 
-        printf(GREEN "%s" RESET, display);
-        for (int s = 0; s < spaces1; s++) printf(" ");
-        printf(GREEN "%s" RESET, elapsed_str);
-        for (int s = 0; s < spaces2; s++) printf(" ");
-        printf(GREEN "%s\n" RESET, timestr);
-
-        char prompt[64];
-        if (last_status == 0) snprintf(prompt, sizeof(prompt), GREEN "[%d]OJC> " RESET, last_status);
-        else                  snprintf(prompt, sizeof(prompt), RED   "[%d]OJC> " RESET, last_status);
-
+        theme_build_prompt(&shell_config,last_status,prompt,sizeof(prompt));
         input = readline(prompt);
-
         if (!input) {
-            printf("just use 'exit' to leave OJC-sh!\n");
-            write_history(histfile);
-            continue;
+            putchar('\n');
+            break;
         }
-
         if (*input) add_history(input);
 
-        char *parts[64];
-        int n = split_on_delim(input, parts, 64);
-        for (int i = 0; i < n; i++) {
-            char *cmd = parts[i];
-            while (*cmd == ' ') cmd++;
-            if (*cmd) run_command(cmd);
+        {
+            char *parts[64];
+            int count = split_on_delim(input,parts,64);
+            int i;
+            if (count < 0) last_status = 2;
+            else for (i=0;i<count;++i) {
+                char *cmd = parts[i];
+                while (*cmd == ' ' || *cmd == '\t') ++cmd;
+                if (*cmd) {
+                    fputs(theme_color(&shell_config,"text"),stdout);
+                    fflush(stdout);
+                    run_command(cmd);
+                    fputs("\033[0m",stdout);
+                }
+            }
         }
-
         free(input);
     }
-
-    write_history(histfile);
-    return 0;
+    save_history();
+    return last_status;
 }
