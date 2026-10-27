@@ -1,12 +1,30 @@
 # OJC-shell
 
-**A small shell with a larger destination.**
+**A small shell, and the beginning of a much longer journey.**
 
 OJC-shell is a lightweight, Unix-like command-line shell written in C. It began as a hands-on experiment in understanding how a shell works beneath the prompt: reading commands, parsing tokens, creating processes, connecting pipes, and communicating with the operating system.
 
-It is also the first command-line building block in the wider **OJclicks OS** vision.
+OJC-shell was an early part of the OJ journey. Its development has now reached its final release, **V3.0.0**. The next chapter is a separate project: **OJ-shell (OJS)**, being developed for the future **OJKeys OS**.
 
 > Build the foundation. Understand every layer. Keep control.
+
+---
+
+## Project status: final release
+
+> OJC-shell has reached **V3.0.0**, its final planned release. Active development has ended, and no further feature releases are planned for this repository.
+
+This does not mean the project is being erased or forgotten. The source code, release history, and documentation will remain here as a record of the work and learning that went into it. OJC-shell can still be explored, built, and used as-is, but it should be considered a completed project rather than an actively developed shell.
+
+The next chapter is **OJ-shell (OJS)**, a separate project intended for **OJKeys OS**. It carries forward the experience gained here, but it is not simply another OJC-shell release.
+
+## A note from the creator
+
+OJC-shell means more to me than a collection of C files and terminal commands. It was one of my first serious C projects, and one of the projects closest to my heart. I started it to learn by building something real, and along the way it became a place where I could see my own progress: every bug I chased, every feature I added, every release, and every small improvement.
+
+It is difficult to close a chapter you have spent so much time with. Part of me would happily keep adding things to OJC-shell forever. But projects, like the people who build them, need room to move forward. I would rather give this project a proper ending than keep extending it without a clear purpose.
+
+Thank you to everyone who tried OJC-shell, followed its releases, reported issues, or simply took an interest in it. And to this little shell itself: thank you for being part of the beginning. **V3.0.0 is the final release, but it is not the end of the journey that started here.**
 
 ---
 
@@ -28,7 +46,7 @@ The 2.x release line records that progression:
 
 These releases were steps in learning how the pieces fit together, not an attempt to recreate every feature of Bash.
 
-**Version 3 marks a change in direction:** from adding shell features one by one toward building a clearer, more maintainable foundation that can grow alongside the OJ ecosystem.
+**V3.0.0 is the closing point of this project's development.** It represents the work completed in OJC-shell and marks the transition to a new, separate project rather than the start of another development phase here.
 
 ## What OJC-shell is today
 
@@ -50,17 +68,17 @@ OJC-shell uses C and Unix/POSIX interfaces to make the relationship between a co
 
 ## The OJ direction
 
-OJC-shell is not meant to exist as an isolated terminal project. It is part of a longer direction: **OJclicks OS**, an exploration of a minimal, understandable, and configurable operating-system environment.
+OJC-shell was created during an earlier stage of the OJ ecosystem, alongside the **OJclicks OS** vision. The direction has since evolved. The next command-line project is **OJ-shell (OJS)**, intended for **OJKeys OS**. OJS is a separate project; this repository remains the home of OJC-shell and its history.
 
 The long-term ideas behind that direction are:
 
 - **Minimal by design:** keep the base system focused instead of accumulating layers without a reason.
 - **Understandable foundations:** prefer clear components and explicit behavior over hidden complexity.
 - **User control:** make the environment configurable without making its internals inaccessible.
-- **A connected OJ ecosystem:** let OJC-shell become a natural command-line interface for future OJ tools and system components.
-- **Room to experiment:** use the project to explore process management, command interpretation, system interfaces, and eventually deeper operating-system integration.
+- **A connected OJ ecosystem:** build tools that fit coherently into the wider OJ environment.
+- **Room to experiment:** continue exploring process management, command interpretation, system interfaces, and deeper operating-system integration in future projects.
 
-These are project directions, not claims that OJclicks OS or every planned integration already exists. OJC-shell is one piece of that larger work.
+These are long-term directions, not claims that OJKeys OS or every planned integration already exists. OJC-shell remains a completed piece of the earlier journey.
 
 ## Themes and configuration
 
@@ -132,13 +150,13 @@ make clean
 
 ## Scope and limitations
 
-OJC-shell is a learning-oriented Unix-like shell, not a drop-in replacement for Bash, Zsh, or POSIX `sh`.
+OJC-shell is a completed, learning-oriented Unix-like shell, not a drop-in replacement for Bash, Zsh, or POSIX `sh`.
 
-Features such as job control, command substitution, globbing, shell functions, and full POSIX shell compatibility are outside its current implementation. The project will grow deliberately, with correctness and a maintainable design taking priority over feature count.
+Features such as job control, command substitution, globbing, shell functions, and full POSIX shell compatibility are outside its final implementation. These limitations are part of the project's documented scope; future development belongs in separate OJ projects.
 
 ## Contributing
 
-Issues, bug reports, and thoughtful contributions are welcome. When reporting a problem, include the command that triggered it, the expected behavior, the actual behavior, and relevant build or runtime output.
+This repository is kept available for learning, reference, and historical context. Since OJC-shell has reached its final planned release, active development and feature work are not expected.
 
 ## License
 
