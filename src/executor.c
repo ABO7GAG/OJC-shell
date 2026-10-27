@@ -97,7 +97,7 @@ fail:
 }
 
 void run_command(char *command) {
-    char *args[MAX_ARGS],*commands[MAX_COMMANDS][MAX_ARGS];
+    char *args[MAX_ARGS], **commands[MAX_COMMANDS];
     const char *in_file=NULL,*out_file=NULL;
     int append=0,argc,count=1,i;
     struct timespec begin,end;
@@ -105,7 +105,6 @@ void run_command(char *command) {
     argc=parse_input(command,args,MAX_ARGS);
     if (argc<0) { last_status=2; return; }
     if (!argc || !args[0] || !*args[0]) return;
-    commands[0][0]=args[0];
 
     for (i=0;i<argc;++i) {
         if (!args[i]) continue;
