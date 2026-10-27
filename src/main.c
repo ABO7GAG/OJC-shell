@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <readline/readline.h>
@@ -18,6 +19,12 @@ int last_status = 0;
 char histfile[1024] = "";
 char elapsed_str[32] = "";
 OJCConfig shell_config;
+
+static void handle_sigint(int sig) {
+    (void)sig;
+    last_status = 130;
+    (void)write(STDOUT_FILENO, "\n", 1);
+}
 
 static void save_history(void) {
     if (histfile[0]) (void)write_history(histfile);
@@ -50,6 +57,13 @@ int main(void) {
     setup_history_path();
     if (histfile[0]) (void)read_history(histfile);
     atexit(save_history);
+    {
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = handle_sigint;
+        sigemptyset(&sa.sa_mask);
+        (void)sigaction(SIGINT, &sa, NULL);
+    }
     rl_catch_signals = 1;
     rl_readline_name = "ojc";
 
