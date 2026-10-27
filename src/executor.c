@@ -113,8 +113,7 @@ void run_command(char *command) {
             if (count>=MAX_COMMANDS || !args[i+1] || !*args[i+1]) {
                 fprintf(stderr,"ojc: invalid pipeline\n"); last_status=2; return;
             }
-            args[i]=NULL;
-            commands[count++][0]=args[i+1];
+            /* Pipe tokens are split in the command-vector pass below. */
         } else if (!strcmp(args[i],"<")) {
             if (in_file || !args[i+1] || !*args[i+1]) {
                 fprintf(stderr,"ojc: invalid input redirection\n"); last_status=2; return;
