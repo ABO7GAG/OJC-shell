@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,63 +6,97 @@
 #include <readline/history.h>
 #include "shell.h"
 #include "builtins.h"
+#include "config.h"
+
+static void show_config(void) {
+    printf("theme=%s\nprompt=%s\nprompt_color=%s\ntext_color=%s\nerror_color=%s\nsuccess_color=%s\ninfo_color=%s\n",
+        shell_config.theme,shell_config.prompt_format,shell_config.prompt_color,
+        shell_config.text_color,shell_config.error_color,shell_config.success_color,
+        shell_config.info_color);
+}
+static int save_config(void) {
+    if (config_save(&shell_config)) {
+        fprintf(stderr,"ojc: unable to save configuration\n");
+        last_status=1;
+    } else last_status=0;
+    return last_status;
+}
+static int ojc_command(char **a) {
+    if (!a[1] || !strcmp(a[1],"help")) {
+        puts("ojc theme list | set <oj-green|monochrome|classic|custom>");
+        puts("ojc config show | set <key> <value> | reset");
+        puts("Custom keys: prompt, prompt_color, text_color, error_color, success_color, info_color");
+        last_status=0; return 1;
+    }
+    if (!strcmp(a[1],"theme")) {
+        if (a[2] && !strcmp(a[2],"list") && !a[3]) {
+            puts("oj-green\nmonochrome\nclassic\ncustom"); last_status=0;
+        } else if (a[2] && !strcmp(a[2],"set") && a[3] && !a[4]) {
+            if (config_set_option(&shell_config,"theme",a[3])) {
+                fprintf(stderr,"ojc: unknown theme: %s\n",a[3]); last_status=2;
+            } else (void)save_config();
+        } else { fprintf(stderr,"usage: ojc theme list | set <name>\n"); last_status=2; }
+        return 1;
+    }
+    if (!strcmp(a[1],"config")) {
+        if (a[2] && !strcmp(a[2],"show") && !a[3]) {
+            show_config(); last_status=0;
+        } else if (a[2] && !strcmp(a[2],"reset") && !a[3]) {
+            if (config_reset(&shell_config)) { perror("ojc: config reset"); last_status=1; }
+            else { puts("OJC configuration reset."); last_status=0; }
+        } else if (a[2] && !strcmp(a[2],"set") && a[3] && a[4] && !a[5]) {
+            if (config_set_option(&shell_config,a[3],a[4])) {
+                fprintf(stderr,"ojc: invalid setting or value: %s\n",a[3]); last_status=2;
+            } else (void)save_config();
+        } else { fprintf(stderr,"usage: ojc config show | set <key> <value> | reset\n"); last_status=2; }
+        return 1;
+    }
+    fprintf(stderr,"ojc: unknown command: %s\n",a[1]); last_status=2;
+    return 1;
+}
 
 int run_builtin(char **args) {
-    if (strcmp(args[0], "exit") == 0) {
-        printf("as you like...\n");
+    if (!args || !args[0]) return 0;
+    if (!strcmp(args[0],"exit")) {
+        puts("as you like...");
         exit(last_status);
     }
-    if (strcmp(args[0], "cd") == 0) {
-        if (args[1] == NULL) { chdir(getenv("HOME")); last_status = 0; }
-        else {
-            if (chdir(args[1]) != 0) { fprintf(stderr, "W: did u type it right? %s\n", args[1]); last_status = 1; }
-            else last_status = 0;
-        }
+    if (!strcmp(args[0],"cd")) {
+        const char *target=args[1]?args[1]:getenv("HOME");
+        if (!target || chdir(target)) {
+            fprintf(stderr,"ojc: cd: %s: %s\n",target?target:"(HOME is not set)",
+                    target?strerror(errno):"HOME is not set");
+            last_status=1;
+        } else last_status=0;
         return 1;
     }
-    if (strcmp(args[0], "his") == 0) {
-        HIST_ENTRY **hist = history_list();
-        if (hist)
-            for (int h = 0; hist[h]; h++)
-                printf("%d %s\n", h + 1, hist[h]->line);
-        last_status = 0;
-        return 1;
+    if (!strcmp(args[0],"his")) {
+        HIST_ENTRY **history=history_list();
+        if (history) for (int i=0;history[i];++i) printf("%d %s\n",i+1,history[i]->line);
+        last_status=0; return 1;
     }
-    if (strcmp(args[0], "who?") == 0) {
-        printf("        >_ \n OJC // SHELL\n \n [ built from silence ]\n [ executed in control ]\n \n      — ojclicks —\n");
-        last_status = 0;
-        return 1;
+    if (!strcmp(args[0],"who?")) {
+        puts("        >_\n OJC // SHELL\n\n [ built from silence ]\n [ executed in control ]\n\n      — ojclicks —");
+        last_status=0; return 1;
     }
-    if (strcmp(args[0], "hello") == 0) {
-        printf("hello from OJC-shell a vision for OJclicks os...\n");
-        last_status = 0;
-        return 1;
+    if (!strcmp(args[0],"hello")) {
+        puts("hello from OJC-shell, a vision for OJclicks OS...");
+        last_status=0; return 1;
     }
-    if (strcmp(args[0], "help") == 0) {
-        printf("try this commands...\n'who?'\n'hello'\n'about'\n'ojcshfetch'\n'his'\n");
-        last_status = 0;
-        return 1;
+    if (!strcmp(args[0],"help")) {
+        puts("Builtins: cd, exit, his, who?, hello, about, ojc, ojcshfetch, help");
+        last_status=0; return 1;
     }
-    if (strcmp(args[0], "about") == 0) {
-        printf("OJC-shell — a minimal Unix-like shell written in C\n");
-        printf("Part of the OJclicks OS journey\n");
-        printf("Not here to compete with Bash...\njust here to understand it\n");
-        printf("works...\nbreaks...\nteaches...\n");
-        printf("If it crashes, it's a lesson.\nIf it works, question it.\n");
-        last_status = 0;
-        return 1;
+    if (!strcmp(args[0],"about")) {
+        puts("OJC-shell — a minimal Unix-like shell written in C");
+        puts("Part of the OJclicks OS journey");
+        puts("Not here to compete with Bash... just here to understand it.");
+        last_status=0; return 1;
     }
-    if (strcmp(args[0], "ojcshfetch") == 0) {
-        printf("\n"
-         "   ██████╗      ██╗ ██████╗      ███████╗██╗  ██╗███████╗██╗     ██╗\n"
-         "  ██╔═══██╗     ██║██╔════╝      ██╔════╝██║  ██║██╔════╝██║     ██║\n"
-         "  ██║   ██║     ██║██║           ███████╗███████║█████╗  ██║     ██║\n"
-         "  ██║   ██║██   ██║██║           ╚════██║██╔══██║██╔══╝  ██║     ██║\n"
-         "  ╚██████╔╝╚█████╔╝╚██████╗      ███████║██║  ██║███████╗███████╗███████╗\n"
-         "   ╚═════╝  ╚════╝  ╚═════╝      ╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝\n"
-         "\n                >_  O J C   S H E L L  _<\n\n");
-        last_status = 0;
-        return 1;
+    if (!strcmp(args[0],"ojc")) return ojc_command(args);
+    if (!strcmp(args[0],"ojcshfetch")) {
+        puts("\n>_ O J C   S H E L L _<\n");
+        last_status=0; return 1;
     }
     return 0;
 }
